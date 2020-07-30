@@ -12,6 +12,8 @@ from scipy.stats import uniform
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import GridSearchCV
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import AdaBoostClassifier
 
 train_csv=pd.read_csv('test.csv')
 df=pd.read_csv('train.csv')
@@ -22,6 +24,46 @@ plt.hist(df['Fare'])
 sns.boxplot(df['Age'])
 
 print(df.isnull().sum())
+
+Mrmean=[]
+Mrsmean=[]
+MissMean=[]
+Mastermean=[]
+
+def age_feature():
+    for i in range(len(df)):
+        if 'Master' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == False:
+                Mastermean.append(df['Age'][i])
+
+        elif 'Mr.' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == False:   
+                Mrmean.append(df['Age'][i])
+
+        elif 'Mrs.' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == False:
+                Mrsmean.append(df['Age'][i])
+            
+        elif  'Miss' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == False:
+                MissMean.append(df['Age'][i])
+    
+    for i in range(len(df)):
+        if 'Master' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == True:
+                df.loc[i,'Age']=(statistics.median(sorted(Mastermean)))
+        elif 'Mr.' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == True:
+    #            df['Age'][i]=(statistics.median(sorted(Mrmean)))
+                    df.loc[i,'Age']=(statistics.median(sorted(Mrmean)))
+        elif 'Mrs.' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == True:
+                df.loc[i,'Age']=(statistics.median(sorted(Mrsmean)))
+        elif  'Miss' in df['Name'][i]:
+            if math.isnan(df['Age'][i]) == True:
+                df.loc[i,'Age']=(statistics.median(sorted(MissMean)))
+
+age_eng = age_feature()
 
 new_data = df.drop(labels=['Sex','Name'],axis=1)
 
@@ -102,3 +144,26 @@ kdgrid.fit(X_train,y_train)
 kdbestgr=kdgrid.best_estimator_
 y_kdpred=kdbestgr.predict(X_test)
 print(accuracy_score(y_test,y_kdpred))
+
+dc=DecisionTreeClassifier(splitter='random',
+ random_state= 10,
+ min_samples_split = 5,
+ min_samples_leaf = 2,
+ max_depth = 10,
+ criterion = 'gini')
+dc.fit(dc_Xtrain,dc_ytrain)
+dc_pred=dc.predict(dc_Xtest)
+print(accuracy_score(dc_ytest,dc_pred))
+
+dcparams={}
+max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+max_depth.append(None)
+dcparams={'criterion':['gini','entropy'],'splitter':["best", "random"],'max_depth':max_depth,'min_samples_split':[2, 5, 10],'min_samples_leaf': [1,2,4],'random_state':[0,5,10,20,25,100]}
+
+
+dc_rand=RandomizedSearchCV(dc,dcparams,cv=3,n_jobs=-1,random_state=100)
+dc_rand.fit(dc_Xtrain,dc_ytrain)
+dc_rand.best_params_
+
+
+Ada=AdaBoostClassifier(base_estimator=dc,n_estimators=500,learning_rate=1)
