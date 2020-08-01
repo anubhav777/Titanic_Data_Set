@@ -14,6 +14,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier
 
 train_csv=pd.read_csv('test.csv')
 df=pd.read_csv('train.csv')
@@ -167,3 +168,37 @@ dc_rand.best_params_
 
 
 Ada=AdaBoostClassifier(base_estimator=dc,n_estimators=500,learning_rate=1)
+boost=Ada.fit(dc_Xtrain,dc_ytrain)
+boost_pred=boost.predict(dc_Xtest)
+print(accuracy_score(dc_ytest,boost_pred))
+
+dcparams={'criterion':['gini','entropy'],'splitter':["best", "random"],
+'max_depth':[None,dc_rand.best_params_['max_depth']-5,dc_rand.best_params_['max_depth']-10,dc_rand.best_params_['max_depth'],dc_rand.best_params_['max_depth']+20,dc_rand.best_params_['max_depth']+50], 
+'min_samples_split':[dc_rand.best_params_['min_samples_split']-1,dc_rand.best_params_['min_samples_split']-2,dc_rand.best_params_['min_samples_split'],dc_rand.best_params_['min_samples_split']+2,dc_rand.best_params_['min_samples_split']+4],
+'min_samples_leaf':[dc_rand.best_params_['min_samples_leaf']-2,dc_rand.best_params_['min_samples_leaf']-4,dc_rand.best_params_['min_samples_leaf'],dc_rand.best_params_['min_samples_leaf']+2,dc_rand.best_params_['min_samples_leaf']+4],
+'random_state':[0,5,10,20,25,100]}
+
+dfgrid=GridSearchCV(dc,dcparams,cv=3,n_jobs=-1)
+dfgrid.fit(dc_Xtrain,dc_ytrain)
+dfgridpred=dfgrid.predict(dc_Xtest)
+
+rf=RandomForestClassifier(n_estimators= 1400,min_samples_split= 5,min_samples_leaf= 2,max_depth= 90,criterion= 'entropy',bootstrap= True)
+rf.fit(dc_Xtrain,dc_ytrain)
+y_rfpred=rf.predict(dc_Xtest)
+print(dc_ytest,y_rfpred)
+
+max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+max_depth.append(None)
+rfparams={'n_estimators':[int(x) for x in np.linspace(100,1500,15)],'criterion':['gini','entropy'],'max_depth':max_depth,'min_samples_split':[2, 5, 10],'bootstrap':[True,False],'min_samples_leaf': [1,2,4]}
+rfrnd=RandomizedSearchCV(rf,rfparams,cv=5,random_state=40,n_jobs=-1,n_iter=100)
+rfrnd.fit(dc_Xtrain,dc_ytrain)
+rfrnd.best_params_
+gdparams={'n_estimators':[rfrnd.best_params_['n_estimators']-100,rfrnd.best_params_['n_estimators']-200,rfrnd.best_params_['n_estimators'],rfrnd.best_params_['n_estimators']+100,rfrnd.best_params_['n_estimators']+200,rfrnd.best_params_['n_estimators']+300],
+        'criterion':[rfrnd.best_params_['criterion']],
+        'max_depth':[None,rfrnd.best_params_['max_depth']-10,rfrnd.best_params_['max_depth'],rfrnd.best_params_['max_depth']-20,rfrnd.best_params_['max_depth'],rfrnd.best_params_['max_depth']+10,rfrnd.best_params_['max_depth']+20],
+        'min_samples_split':[rfrnd.best_params_['min_samples_split']-10,rfrnd.best_params_['min_samples_split']-20,rfrnd.best_params_['min_samples_split'],rfrnd.best_params_['min_samples_split']+10,rfrnd.best_params_['min_samples_split']+20],'bootstrap':[True,False],'min_samples_leaf': [1,2,3]}
+rggrid=GridSearchCV(rf,gdparams,cv=3,n_jobs=-1)
+rggrid.fit(dc_Xtrain,dc_ytrain)
+ygridpred=rggrid.best_estimator_
+new_y=ygridpred.predict(dc_Xtest)
+print(accuracy_score(dc_ytest,new_y))
